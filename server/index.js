@@ -20,23 +20,25 @@ const yoga = createYoga({
   plugins: [useGraphQLMiddleware([permissions])],
   context: async ({ request }) => {
     const authorization = request.headers.get("authorization") ?? "";
-
-    if (authorization.startsWith("Bearer")) {
-      const token = authorization.substring(7, authorization.length);
-      jwt.verify(token, signingKey, function (error, decoded) {
-        let user = null;
-        if (!error) {
-          user = decoded;
-        }
-
-        return {
-          db: db,
-          user: user,
-        };
-      });
+    let user = null;
+  
+    if (authorization.startsWith("Bearer ")) {
+      const token = authorization.substring(7);
+      try {
+        user = await new Promise((resolve, reject) => {
+          jwt.verify(token, signingKey, (error, decoded) => {
+            if (error) reject(error);
+            resolve(decoded);
+          });
+        });
+      } catch (error) {
+        console.error("JWT verification failed:", error.message);
+      }
     }
+  
     return {
-      db: db,
+      db,
+      user,
     };
   },
 });

@@ -9,6 +9,11 @@ import {
 } from "./categories.js";
 
 import {
+  typeDef as souvenirs,
+  resolvers as souvenirsResolvers,
+} from "./souvenirs.js";
+
+import {
   typeDef as login,
   resolvers as loginResolvers,
 } from "./authentication.js";
@@ -22,12 +27,13 @@ const query = `
     _emptyAction: String
   }
 `;
-const typeDefs = [query, hello, salute, categories, login];
+const typeDefs = [query, hello, salute, categories, login, souvenirs];
 const resolvers = _.merge(
   helloResolvers,
   saluteResolvers,
   categoriesResolvers,
-  loginResolvers
+  loginResolvers,
+  souvenirsResolvers
 );
 
 export const schema = createSchema({
