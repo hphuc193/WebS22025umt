@@ -2,80 +2,88 @@ import { useQuery, useMutation, gql } from "@apollo/client";
 import { useParams, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 
-const GET_SOUVENIR = gql`
-  query GetSouvenir($id: ID!) {
-    souvenir(_id: $id) {
+const GET_MOTORBIKE = gql`
+  query GetMotorbike($id: ID!) {
+    motorbike(_id: $id) {
       _id
+      stt
       name
-      description
-      price
+      pricePerDay
+      quantity
       images
     }
   }
 `;
 
-const UPDATE_SOUVENIR = gql`
-  mutation UpdateSouvenir($id: ID!, $input: SouvenirInput!, $files: [Upload]) {
-    updateSouvenir(_id: $id, input: $input, files: $files) {
+const UPDATE_MOTORBIKE = gql`
+  mutation UpdateMotorbike(
+    $id: ID!
+    $input: MotorbikeInput!
+    $files: [Upload]
+  ) {
+    updateMotorbike(_id: $id, input: $input, files: $files) {
       _id
+      stt
       name
-      description
-      price
+      pricePerDay
+      quantity
       images
     }
   }
 `;
 
 const ADD_IMAGES = gql`
-  mutation AddImagesToSouvenir($id: ID!, $files: [Upload!]!) {
-    addImagesToSouvenir(_id: $id, files: $files) {
+  mutation AddImagesToMotorbike($id: ID!, $files: [Upload!]!) {
+    addImagesToMotorbike(_id: $id, files: $files) {
       _id
       images
     }
   }
 `;
 
-const DELETE_SOUVENIR = gql`
-  mutation DeleteSouvenir($id: ID!) {
-    deleteSouvenir(_id: $id) {
+const DELETE_MOTORBIKE = gql`
+  mutation DeleteMotorbike($id: ID!) {
+    deleteMotorbike(_id: $id) {
       success
       message
     }
   }
 `;
 
-export default function ManageSouvenir() {
+export default function ManageMotorbike() {
   const { id } = useParams();
   const navigate = useNavigate();
   const token = localStorage.getItem("token");
 
   const [formData, setFormData] = useState({
+    stt: "",
     name: "",
-    description: "",
-    price: "",
+    pricePerDay: "",
+    quantity: "",
   });
   const [files, setFiles] = useState([]);
 
-  const { data, loading, error } = useQuery(GET_SOUVENIR, {
+  const { data, loading, error } = useQuery(GET_MOTORBIKE, {
     variables: { id },
     context: { headers: { Authorization: token ? `Bearer ${token}` : "" } },
   });
 
   useEffect(() => {
-    if (data && data.souvenir) {
+    if (data && data.motorbike) {
       setFormData({
-        name: data.souvenir.name,
-        description: data.souvenir.description,
-        price: data.souvenir.price.toString(),
+        stt: data.motorbike.stt.toString(),
+        name: data.motorbike.name,
+        pricePerDay: data.motorbike.pricePerDay.toString(),
+        quantity: data.motorbike.quantity.toString(),
       });
     }
   }, [data]);
 
-  const [updateSouvenir] = useMutation(UPDATE_SOUVENIR, {
+  const [updateMotorbike] = useMutation(UPDATE_MOTORBIKE, {
     context: { headers: { Authorization: token ? `Bearer ${token}` : "" } },
     onCompleted: () => {
       alert("Cập nhật thành công!");
-      navigate("/souvenirs");
+      navigate("/motorbikes");
     },
   });
 
@@ -84,9 +92,9 @@ export default function ManageSouvenir() {
     onCompleted: () => alert("Thêm ảnh thành công!"),
   });
 
-  const [deleteSouvenir] = useMutation(DELETE_SOUVENIR, {
+  const [deleteMotorbike] = useMutation(DELETE_MOTORBIKE, {
     context: { headers: { Authorization: token ? `Bearer ${token}` : "" } },
-    onCompleted: () => navigate("/souvenirs"),
+    onCompleted: () => navigate("/motorbikes"),
   });
 
   const handleChange = (e) => {
@@ -99,10 +107,15 @@ export default function ManageSouvenir() {
 
   const handleUpdate = async () => {
     try {
-      await updateSouvenir({
+      await updateMotorbike({
         variables: {
           id,
-          input: { ...formData, price: parseFloat(formData.price) },
+          input: {
+            stt: parseInt(formData.stt),
+            name: formData.name,
+            pricePerDay: parseFloat(formData.pricePerDay),
+            quantity: parseInt(formData.quantity),
+          },
           files: files.length > 0 ? files : null,
         },
       });
@@ -121,7 +134,7 @@ export default function ManageSouvenir() {
       await addImages({
         variables: { id, files },
       });
-      setFiles([]); // Reset file input sau khi thêm
+      setFiles([]);
     } catch (error) {
       alert("Thêm ảnh thất bại!");
       console.error(error);
@@ -129,9 +142,9 @@ export default function ManageSouvenir() {
   };
 
   const handleDelete = async () => {
-    if (window.confirm("Bạn có chắc chắn muốn xóa sản phẩm này?")) {
+    if (window.confirm("Bạn có chắc chắn muốn xóa motorbike này?")) {
       try {
-        await deleteSouvenir({ variables: { id } });
+        await deleteMotorbike({ variables: { id } });
         alert("Xóa thành công!");
       } catch (error) {
         alert("Xóa thất bại!");
@@ -148,35 +161,41 @@ export default function ManageSouvenir() {
   return (
     <div className="p-6 max-w-md mx-auto bg-white shadow-md rounded-lg border border-gray-200">
       <h2 className="text-2xl font-bold mb-4 text-gray-900">
-        Quản lý sản phẩm
+        Quản lý Motorbike
       </h2>
 
       <input
+        type="number"
+        name="stt"
+        placeholder="STT"
+        value={formData.stt}
+        onChange={handleChange}
+        className="block w-full p-2 border rounded mb-2"
+      />
+      <input
         type="text"
         name="name"
-        placeholder="Tên sản phẩm"
+        placeholder="Tên motorbike"
         value={formData.name}
         onChange={handleChange}
         className="block w-full p-2 border rounded mb-2"
       />
-
-      <textarea
-        name="description"
-        placeholder="Mô tả"
-        value={formData.description}
-        onChange={handleChange}
-        className="block w-full p-2 border rounded mb-2"
-      />
-
       <input
         type="number"
-        name="price"
-        placeholder="Giá"
-        value={formData.price}
+        name="pricePerDay"
+        placeholder="Giá mỗi ngày"
+        value={formData.pricePerDay}
         onChange={handleChange}
         className="block w-full p-2 border rounded mb-2"
       />
-
+      <input
+        type="number"
+        name="quantity"
+        placeholder="Số lượng"
+        value={formData.quantity}
+        onChange={handleChange}
+        className="block w-full p-2 border rounded mb-2"
+      />
       <input
         type="file"
         multiple
@@ -191,23 +210,20 @@ export default function ManageSouvenir() {
         >
           Cập nhật
         </button>
-
         <button
           onClick={handleAddImages}
           className="bg-yellow-500 text-white px-6 py-3 rounded-md hover:bg-yellow-600"
         >
           Thêm ảnh
         </button>
-
         <button
           onClick={handleDelete}
           className="bg-red-700 text-white px-6 py-3 rounded-md hover:bg-red-800"
         >
           Xóa
         </button>
-
         <button
-          onClick={() => navigate("/souvenirs")}
+          onClick={() => navigate("/motorbikes")}
           className="bg-orange-500 text-white px-6 py-3 rounded-md hover:bg-orange-600"
         >
           Quay lại

@@ -2,19 +2,20 @@ import { useQuery, gql } from "@apollo/client";
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
 
-const GET_SOUVENIRS = gql`
-  query GetSouvenirs(
+const GET_MOTORBIKES = gql`
+  query GetMotorbikes(
     $page: Int
     $limit: Int
-    $filter: SouvenirFilter
-    $sort: SouvenirSort
+    $filter: MotorbikeFilter
+    $sort: MotorbikeSort
   ) {
-    souvenirs(page: $page, limit: $limit, filter: $filter, sort: $sort) {
+    motorbikes(page: $page, limit: $limit, filter: $filter, sort: $sort) {
       items {
         _id
+        stt
         name
-        price
-        description
+        pricePerDay
+        quantity
         images
       }
       total
@@ -24,26 +25,26 @@ const GET_SOUVENIRS = gql`
   }
 `;
 
-export default function Souvenirs() {
+export default function Motorbikes() {
   const navigate = useNavigate();
   const token = localStorage.getItem("token");
   const role = localStorage.getItem("role");
 
   const [page, setPage] = useState(1);
-  const [limit] = useState(6);
-  const [searchTerm, setSearchTerm] = useState(""); // Giá trị ô nhập liệu
-  const [appliedSearchTerm, setAppliedSearchTerm] = useState(""); // Giá trị tìm kiếm đã áp dụng
+  const [limit, setLimit] = useState(6); // Giá trị mặc định
+  const [searchTerm, setSearchTerm] = useState("");
+  const [appliedSearchTerm, setAppliedSearchTerm] = useState("");
   const [minPrice, setMinPrice] = useState("");
   const [maxPrice, setMaxPrice] = useState("");
   const [sortField, setSortField] = useState("name");
   const [sortOrder, setSortOrder] = useState("ASC");
 
-  const { loading, error, data, refetch } = useQuery(GET_SOUVENIRS, {
+  const { loading, error, data, refetch } = useQuery(GET_MOTORBIKES, {
     variables: {
       page,
       limit,
       filter: {
-        name: appliedSearchTerm || undefined, // Chỉ dùng giá trị đã áp dụng
+        name: appliedSearchTerm || undefined,
         minPrice: minPrice ? parseFloat(minPrice) : undefined,
         maxPrice: maxPrice ? parseFloat(maxPrice) : undefined,
       },
@@ -57,8 +58,8 @@ export default function Souvenirs() {
   });
 
   const handleSearch = () => {
-    setAppliedSearchTerm(searchTerm); // Cập nhật giá trị tìm kiếm đã áp dụng
-    setPage(1); // Reset về trang 1 khi tìm kiếm
+    setAppliedSearchTerm(searchTerm);
+    setPage(1);
     refetch();
   };
 
@@ -77,10 +78,16 @@ export default function Souvenirs() {
     refetch();
   };
 
+  const handleLimitChange = (newLimit) => {
+    setLimit(newLimit);
+    setPage(1); // Reset về trang 1 khi thay đổi số lượng item mỗi trang
+    refetch();
+  };
+
   if (loading) return <p className="text-center text-xl">Đang tải...</p>;
   if (error)
     return <p className="text-center text-red-500">Lỗi: {error.message}</p>;
-  if (!data || !data.souvenirs) {
+  if (!data || !data.motorbikes) {
     return <p className="text-center">Không có dữ liệu để hiển thị.</p>;
   }
 
@@ -89,19 +96,20 @@ export default function Souvenirs() {
     total,
     page: currentPage,
     limit: itemsPerPage,
-  } = data.souvenirs;
+  } = data.motorbikes;
   const totalPages = Math.ceil(total / itemsPerPage);
+  const displayedItems = items.length; // Số item hiển thị trên trang hiện tại
 
   return (
     <div className="p-6 max-w-5xl mx-auto">
       <h2 className="text-3xl font-bold text-center mb-6 text-gray-900">
-        Danh sách Souvenirs
+        Danh sách Motorbikes
       </h2>
 
       {role === "admin" && (
         <div className="flex justify-end mb-4">
           <button
-            onClick={() => navigate("/souvenir/new")}
+            onClick={() => navigate("/motorbike/new")}
             className="bg-gray-800 text-white px-4 py-2 rounded-md hover:bg-gray-700"
           >
             + Thêm mới
@@ -120,8 +128,8 @@ export default function Souvenirs() {
               <input
                 id="search"
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)} // Chỉ cập nhật ô nhập liệu
-                placeholder="Nhập tên sản phẩm..."
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Nhập tên xe máy..."
                 className="w-full p-2 border rounded-md"
               />
               <button
@@ -134,7 +142,7 @@ export default function Souvenirs() {
           </div>
 
           <div className="flex-1">
-            <label className="block mb-1">Giá</label>
+            <label className="block mb-1">Giá mỗi ngày</label>
             <div className="flex gap-2">
               <input
                 type="number"
@@ -168,7 +176,7 @@ export default function Souvenirs() {
                 className="w-full p-2 border rounded-md"
               >
                 <option value="name">Tên</option>
-                <option value="price">Giá</option>
+                <option value="pricePerDay">Giá mỗi ngày</option>
               </select>
               <select
                 value={sortOrder}
@@ -189,16 +197,34 @@ export default function Souvenirs() {
         </div>
       </div>
 
-      <p className="text-center mb-4">
-        Tổng số sản phẩm: <strong>{total}</strong>
-      </p>
+      {/* Thông tin phân trang */}
+      <div className="text-center mb-4">
+        <p>
+          Tổng số xe máy: <strong>{total}</strong> | Đang hiển thị:{" "}
+          <strong>{displayedItems}</strong> | Trang hiện tại:{" "}
+          <strong>{currentPage}</strong> / <strong>{totalPages}</strong>
+        </p>
+        <label className="mt-2 block">
+          Số lượng mỗi trang:
+          <select
+            value={limit}
+            onChange={(e) => handleLimitChange(parseInt(e.target.value))}
+            className="ml-2 p-1 border rounded-md"
+          >
+            <option value={5}>5</option>
+            <option value={10}>10</option>
+            <option value={20}>20</option>
+            <option value={50}>50</option>
+          </select>
+        </label>
+      </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {items.map((item) => (
           <div
             key={item._id}
             className="relative overflow-hidden shadow-lg hover:shadow-xl transition cursor-pointer bg-white border-2 border-black rounded-md"
-            onClick={() => navigate(`/souvenir/${item._id}`)}
+            onClick={() => navigate(`/motorbike/${item._id}`)}
           >
             <div className="aspect-[16/9]">
               <img
@@ -213,13 +239,21 @@ export default function Souvenirs() {
             </div>
             <div className="p-4">
               <h3 className="text-lg font-semibold text-black">{item.name}</h3>
-              <p className="text-gray-600">{item.price} VND</p>
+              <p className="text-gray-600">{item.pricePerDay} VND/ngày</p>
             </div>
           </div>
         ))}
       </div>
 
+      {/* Điều khiển phân trang */}
       <div className="flex justify-center gap-4 mt-6">
+        <button
+          disabled={currentPage === 1}
+          onClick={() => handlePageChange(1)}
+          className="bg-gray-800 text-white px-4 py-2 rounded-md hover:bg-gray-700 disabled:bg-gray-400"
+        >
+          Trang đầu
+        </button>
         <button
           disabled={currentPage === 1}
           onClick={() => handlePageChange(currentPage - 1)}
@@ -236,6 +270,13 @@ export default function Souvenirs() {
           className="bg-gray-800 text-white px-4 py-2 rounded-md hover:bg-gray-700 disabled:bg-gray-400"
         >
           Trang sau
+        </button>
+        <button
+          disabled={currentPage === totalPages}
+          onClick={() => handlePageChange(totalPages)}
+          className="bg-gray-800 text-white px-4 py-2 rounded-md hover:bg-gray-700 disabled:bg-gray-400"
+        >
+          Trang cuối
         </button>
       </div>
     </div>

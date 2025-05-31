@@ -12,57 +12,56 @@ const __dirname = dirname(__filename);
 export const typeDef = `
     scalar Upload
 
-    type Souvenir {
+    type Motorbike {
         _id: ID!
+        stt: Int!
         name: String!
-        description: String
-        price: Float!
+        pricePerDay: Float!
+        quantity: Int!
         images: [String!]!
     }
 
-    input SouvenirInput {
+    input MotorbikeInput {
+        stt: Int!
         name: String!
-        description: String
-        price: Float!
+        pricePerDay: Float!
+        quantity: Int!
         images: [String!]
     }
 
-    # Thêm type mới để trả về danh sách sản phẩm kèm thông tin phân trang
-    type SouvenirResponse {
-        items: [Souvenir!]!
-        total: Int! # Tổng số sản phẩm
-        page: Int!  # Trang hiện tại
-        limit: Int! # Số sản phẩm mỗi trang
+    type MotorbikeResponse {
+        items: [Motorbike!]!
+        total: Int!
+        page: Int!
+        limit: Int!
     }
 
-    # Thêm input cho lọc và sắp xếp
-    input SouvenirFilter {
-        name: String          # Tìm kiếm theo tên (hỗ trợ tìm gần đúng)
-        minPrice: Float       # Giá tối thiểu
-        maxPrice: Float       # Giá tối đa
+    input MotorbikeFilter {
+        name: String          # Tìm kiếm theo tên
+        minPrice: Float       # Giá tối thiểu mỗi ngày
+        maxPrice: Float       # Giá tối đa mỗi ngày
     }
 
-    input SouvenirSort {
-        field: String!        # Trường để sắp xếp (name, price, etc.)
+    input MotorbikeSort {
+        field: String!        # Trường để sắp xếp (name, pricePerDay, etc.)
         order: String!        # Thứ tự: "ASC" hoặc "DESC"
     }
 
     extend type Query {
-        # Cập nhật query souvenirs để hỗ trợ phân trang, lọc, sắp xếp
-        souvenirs(
-            page: Int = 1,        # Trang hiện tại, mặc định là 1
-            limit: Int = 10,      # Số sản phẩm mỗi trang, mặc định là 10
-            filter: SouvenirFilter, # Bộ lọc
-            sort: SouvenirSort      # Sắp xếp
-        ): SouvenirResponse!
-        souvenir(_id: ID!): Souvenir
+        motorbikes(
+            page: Int = 1,
+            limit: Int = 10,
+            filter: MotorbikeFilter,
+            sort: MotorbikeSort
+        ): MotorbikeResponse!
+        motorbike(_id: ID!): Motorbike
     }
 
     extend type Mutation {
-        deleteSouvenir(_id: ID!): DeleteResponse!
-        createSouvenir(input: SouvenirInput!, files: [Upload]): Souvenir!
-        updateSouvenir(_id: ID!, input: SouvenirInput!, files: [Upload]): Souvenir!
-        addImagesToSouvenir(_id: ID!, files: [Upload!]!): Souvenir!
+        deleteMotorbike(_id: ID!): DeleteResponse!
+        createMotorbike(input: MotorbikeInput!, files: [Upload]): Motorbike!
+        updateMotorbike(_id: ID!, input: MotorbikeInput!, files: [Upload]): Motorbike!
+        addImagesToMotorbike(_id: ID!, files: [Upload!]!): Motorbike!
     }
 
     type DeleteResponse {
@@ -75,39 +74,30 @@ export const resolvers = {
   Upload: GraphQLUpload,
 
   Query: {
-    souvenirs: authMiddleware(
+    motorbikes: authMiddleware(
       async (parent, { page, limit, filter, sort }, context) => {
-        // Xây dựng query cho MongoDB
         let query = {};
-
-        // Xử lý bộ lọc
         if (filter) {
           if (filter.name) {
-            query.name = { $regex: filter.name, $options: "i" }; // Tìm kiếm gần đúng, không phân biệt hoa thường
+            query.name = { $regex: filter.name, $options: "i" }; // Tìm kiếm gần đúng
           }
           if (filter.minPrice || filter.maxPrice) {
-            query.price = {};
-            if (filter.minPrice) query.price.$gte = filter.minPrice;
-            if (filter.maxPrice) query.price.$lte = filter.maxPrice;
+            query.pricePerDay = {};
+            if (filter.minPrice) query.pricePerDay.$gte = filter.minPrice;
+            if (filter.maxPrice) query.pricePerDay.$lte = filter.maxPrice;
           }
         }
 
-        // Xử lý sắp xếp
         let sortOption = {};
         if (sort && sort.field && sort.order) {
           sortOption[sort.field] = sort.order.toUpperCase() === "ASC" ? 1 : -1;
         }
 
-        // Tính toán phân trang
         const skip = (page - 1) * limit;
-
-        // Lấy tổng số sản phẩm
-        const total = await context.db.souvenirs
+        const total = await context.db.motorbikes
           .getAll()
           .then((items) => items.length);
-
-        // Lấy danh sách sản phẩm với phân trang, lọc và sắp xếp
-        const items = await context.db.souvenirs.getAllWithOptions(
+        const items = await context.db.motorbikes.getAllWithOptions(
           query,
           sortOption,
           skip,
@@ -123,34 +113,34 @@ export const resolvers = {
       }
     ),
 
-    souvenir: authMiddleware(async (parent, { _id }, context) => {
-      return context.db.souvenirs.findById(_id);
+    motorbike: authMiddleware(async (parent, { _id }, context) => {
+      return context.db.motorbikes.findById(_id);
     }),
   },
 
   Mutation: {
-    deleteSouvenir: authMiddleware(
+    deleteMotorbike: authMiddleware(
       async (parent, { _id }, context) => {
         try {
-          const deleted = await context.db.souvenirs.deleteById(_id);
+          const deleted = await context.db.motorbikes.deleteById(_id);
           if (!deleted.success) {
-            return { success: false, message: "Souvenir not found." };
+            return { success: false, message: "Motorbike not found." };
           }
-          return { success: true, message: "Souvenir deleted successfully." };
+          return { success: true, message: "Motorbike deleted successfully." };
         } catch (error) {
-          console.error("Error deleting souvenir:", error);
-          return { success: false, message: "Failed to delete souvenir." };
+          console.error("Error deleting motorbike:", error);
+          return { success: false, message: "Failed to delete motorbike." };
         }
       },
       ["admin", "manager"]
     ),
 
-    createSouvenir: authMiddleware(
+    createMotorbike: authMiddleware(
       async (parent, { input, files }, context) => {
-        console.log("Files received in createSouvenir:", files);
+        console.log("Files received in createMotorbike:", files);
         let imagePaths = input.images || [];
         if (files && files.length > 0) {
-          const resolvedFiles = await Promise.all(files); // Giải quyết các Promise
+          const resolvedFiles = await Promise.all(files);
           imagePaths = await Promise.all(
             resolvedFiles.map(async (file) => {
               console.log("Processing file:", file);
@@ -173,18 +163,18 @@ export const resolvers = {
             })
           );
         }
-        const souvenirData = { ...input, images: imagePaths };
-        return context.db.souvenirs.create(souvenirData);
+        const motorbikeData = { ...input, images: imagePaths };
+        return context.db.motorbikes.create(motorbikeData);
       },
       ["admin"]
     ),
 
-    updateSouvenir: authMiddleware(
+    updateMotorbike: authMiddleware(
       async (parent, { _id, input, files }, context) => {
-        console.log("Files received in updateSouvenir:", files);
+        console.log("Files received in updateMotorbike:", files);
         let imagePaths = input.images || [];
         if (files && files.length > 0) {
-          const resolvedFiles = await Promise.all(files); // Giải quyết các Promise
+          const resolvedFiles = await Promise.all(files);
           imagePaths = await Promise.all(
             resolvedFiles.map(async (file) => {
               console.log("Processing file:", file);
@@ -207,25 +197,25 @@ export const resolvers = {
             })
           );
         }
-        const existingSouvenir = await context.db.souvenirs.findById(_id);
-        if (!existingSouvenir) throw new Error("Souvenir not found");
+        const existingMotorbike = await context.db.motorbikes.findById(_id);
+        if (!existingMotorbike) throw new Error("Motorbike not found");
         const updatedImages = [
-          ...(existingSouvenir.images || []),
+          ...(existingMotorbike.images || []),
           ...imagePaths,
         ];
-        const souvenirData = { ...input, images: updatedImages };
-        return context.db.souvenirs.updateById(_id, souvenirData);
+        const motorbikeData = { ...input, images: updatedImages };
+        return context.db.motorbikes.updateById(_id, motorbikeData);
       },
       ["admin"]
     ),
 
-    addImagesToSouvenir: authMiddleware(
+    addImagesToMotorbike: authMiddleware(
       async (parent, { _id, files }, context) => {
-        console.log("Files received in addImagesToSouvenir:", files);
+        console.log("Files received in addImagesToMotorbike:", files);
         if (!files || files.length === 0) throw new Error("No files provided");
-        const resolvedFiles = await Promise.all(files); // Giải quyết các Promise
-        const existingSouvenir = await context.db.souvenirs.findById(_id);
-        if (!existingSouvenir) throw new Error("Souvenir not found");
+        const resolvedFiles = await Promise.all(files);
+        const existingMotorbike = await context.db.motorbikes.findById(_id);
+        if (!existingMotorbike) throw new Error("Motorbike not found");
 
         const imagePaths = await Promise.all(
           resolvedFiles.map(async (file) => {
@@ -250,10 +240,10 @@ export const resolvers = {
         );
 
         const updatedImages = [
-          ...(existingSouvenir.images || []),
+          ...(existingMotorbike.images || []),
           ...imagePaths,
         ];
-        return context.db.souvenirs.updateById(_id, { images: updatedImages });
+        return context.db.motorbikes.updateById(_id, { images: updatedImages });
       },
       ["admin"]
     ),

@@ -1,25 +1,26 @@
 import { useQuery, gql } from "@apollo/client";
 import { useParams, useNavigate } from "react-router-dom";
 
-const GET_SOUVENIR = gql`
-  query GetSouvenir($id: ID!) {
-    souvenir(_id: $id) {
+const GET_MOTORBIKE = gql`
+  query GetMotorbike($id: ID!) {
+    motorbike(_id: $id) {
       _id
+      stt
       name
-      description
-      price
-      images # Thêm images để hiển thị ảnh
+      pricePerDay
+      quantity
+      images
     }
   }
 `;
 
-export default function Souvenir() {
+export default function Motorbike() {
   const { id } = useParams();
   const navigate = useNavigate();
   const token = localStorage.getItem("token");
-  const role = localStorage.getItem("role"); // Lấy role
+  const role = localStorage.getItem("role");
 
-  const { loading, error, data } = useQuery(GET_SOUVENIR, {
+  const { loading, error, data } = useQuery(GET_MOTORBIKE, {
     variables: { id },
     context: {
       headers: {
@@ -36,23 +37,24 @@ export default function Souvenir() {
   return (
     <div className="p-6 max-w-2xl mx-auto bg-white shadow-lg rounded-lg border border-gray-200">
       <h2 className="text-3xl font-bold mb-4 text-gray-900">
-        {data.souvenir.name}
+        {data.motorbike.name}
       </h2>
 
-      <p className="text-gray-700 text-lg mb-4">{data.souvenir.description}</p>
-
-      <p className="text-xl font-semibold text-blue-600 mb-6">
-        💰 Giá: {data.souvenir.price.toLocaleString()} VND
+      <p className="text-gray-700 text-lg mb-4">STT: {data.motorbike.stt}</p>
+      <p className="text-xl font-semibold text-blue-600 mb-4">
+        Giá mỗi ngày: {data.motorbike.pricePerDay.toLocaleString()} VND
+      </p>
+      <p className="text-gray-700 text-lg mb-6">
+        Số lượng: {data.motorbike.quantity}
       </p>
 
-      {/* Hiển thị tất cả ảnh */}
-      {data.souvenir.images && data.souvenir.images.length > 0 ? (
+      {data.motorbike.images && data.motorbike.images.length > 0 ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
-          {data.souvenir.images.map((image, index) => (
+          {data.motorbike.images.map((image, index) => (
             <img
               key={index}
               src={`https://opulent-space-system-97554gv97rr43xw97-4000.app.github.dev${image}`}
-              alt={`${data.souvenir.name} - ${index + 1}`}
+              alt={`${data.motorbike.name} - ${index + 1}`}
               className="w-full h-auto rounded-md shadow-md"
             />
           ))}
@@ -63,17 +65,16 @@ export default function Souvenir() {
 
       <div className="flex gap-4">
         <button
-          onClick={() => navigate("/souvenirs")}
-          className="bg-blue-500 text-white px-6 py-3 rounded-md font-medium transition hover:bg-blue-600 focus:ring-2 focus:ring-blue-300"
+          onClick={() => navigate("/motorbikes")}
+          className="bg-blue-500 text-white px-6 py-3 rounded-md font-medium transition hover:bg-blue-600"
         >
           ⬅ Quay lại
         </button>
 
-        {/* Chỉ hiển thị nút "Quản lý" cho admin hoặc manager */}
         {(role === "admin" || role === "manager") && (
           <button
-            onClick={() => navigate(`/manage-souvenir/${id}`)}
-            className="bg-green-500 text-white px-6 py-3 rounded-md font-medium transition hover:bg-green-600 focus:ring-2 focus:ring-green-300"
+            onClick={() => navigate(`/manage-motorbike/${id}`)}
+            className="bg-green-500 text-white px-6 py-3 rounded-md font-medium transition hover:bg-green-600"
           >
             ⚙️ Quản lý sản phẩm
           </button>

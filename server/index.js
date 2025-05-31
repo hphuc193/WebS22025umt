@@ -4,11 +4,20 @@ import { schema } from "./graphql/schema.js";
 import { useGraphQLMiddleware } from "@envelop/graphql-middleware";
 import { permissions } from "./permissions.js";
 import { db } from "./config.js";
+import express from "express";
+import path from "path";
+import { fileURLToPath } from "url";
+import { dirname } from "path";
+import fs from "fs";
+import { GraphQLUpload, graphqlUploadExpress } from "graphql-upload"; // Thêm graphql-upload
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 import dotenv from "dotenv";
 dotenv.config();
 
-import {initDatabase} from "./data/init.js"
+import { initDatabase } from "./data/init.js";
 await initDatabase();
 
 const signingKey = process.env.JWT_SECRET;
@@ -21,7 +30,7 @@ const yoga = createYoga({
   context: async ({ request }) => {
     const authorization = request.headers.get("authorization") ?? "";
     let user = null;
-  
+
     if (authorization.startsWith("Bearer ")) {
       const token = authorization.substring(7);
       try {
@@ -35,7 +44,7 @@ const yoga = createYoga({
         console.error("JWT verification failed:", error.message);
       }
     }
-  
+
     return {
       db,
       user,
@@ -43,9 +52,23 @@ const yoga = createYoga({
   },
 });
 
-const server = createServer(yoga);
+const app = express();
+app.use("/img", express.static(path.join(__dirname, "img")));
+app.get("/img/:filename", (req, res) => {
+  const filename = req.params.filename;
+  const filePath = path.join(__dirname, "img", filename);
+  if (fs.existsSync(filePath)) {
+    res.sendFile(filePath);
+  } else {
+    res.status(404).send("Image not found");
+  }
+});
+
+// Thêm middleware để xử lý file upload
+app.use(graphqlUploadExpress({ maxFileSize: 10000000, maxFiles: 10 })); // Giới hạn 10MB, 10 file
+app.use(yoga.graphqlEndpoint, yoga);
 
 const PORT = 4000;
-server.listen(PORT, () => {
+app.listen(PORT, () => {
   console.info(`Server is running on http://localhost:${PORT}`);
 });

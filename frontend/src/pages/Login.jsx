@@ -4,38 +4,42 @@ import { useNavigate } from "react-router-dom";
 export default function Login() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState(""); // Thêm state để hiển thị lỗi
+  const [error, setError] = useState("");
   const navigate = useNavigate();
 
   const handleLogin = async () => {
-    setError(""); // Xóa lỗi trước khi thử đăng nhập
-
-    const response = await fetch("https://opulent-space-system-97554gv97rr43xw97-4000.app.github.dev/", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        query: `
-          mutation {
-            login(input: { username: "${username}", password: "${password}" }) {
-              success
-              message
-              data {
-                jwt
+    setError("");
+    const response = await fetch(
+      "https://opulent-space-system-97554gv97rr43xw97-4000.app.github.dev/",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          query: `
+            mutation {
+              login(input: { username: "${username}", password: "${password}" }) {
+                success
+                message
+                data {
+                  jwt
+                  role
+                }
               }
             }
-          }
-        `,
-      }),
-    });
+          `,
+        }),
+      }
+    );
 
     const result = await response.json();
 
     if (result.data?.login?.success) {
-      const token = result.data.login.data.jwt;
-      localStorage.setItem("token", token); // Lưu token vào localStorage
-      navigate("/souvenirs"); // Chuyển hướng sau khi đăng nhập thành công
+      const { jwt, role } = result.data.login.data;
+      localStorage.setItem("token", jwt);
+      localStorage.setItem("role", role);
+      navigate("/home"); // Chuyển hướng đến Home thay vì Souvenirs
     } else {
       setError(result.data?.login?.message || "Sai tài khoản hoặc mật khẩu!");
     }

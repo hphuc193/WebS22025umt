@@ -8,7 +8,8 @@ export const SouvenirSchema = new Schema(
   {
     name: { type: String, required: true },
     description: { type: String },
-    price: { type: Number, required: true }
+    price: { type: Number, required: true },
+    images: [{ type: String }],
   },
   {
     collection: "souvenirs",
